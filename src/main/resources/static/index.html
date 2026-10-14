@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My To-Do List</title>
+   <style>
+       body {font-family: sans-serif; max-width:500px; margin: 40px auto; padding: 0 16px; }
+       form {display: flex; gap: 8px; margin-bottom: 20px; }
+       input[type=text]{flex: 1; padding: 8px; font-size:16px; }
+       button {padding: 8px 12px; cursor: pointer;}
+       li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #ddd; }
+       li span { flex: 1;}
+       .done span {text-decoration: line-through; color: gray;}
+   </style>
+</head>
+<body>
+    <h1> My To-Do List</h1>
+    <form  id="taskForm">
+        <label for="titleInput"></label><input type="text" id="titleInput" placeholder="What do you need to do?" required>
+      <button type="submit"> Add</button>
+    </form>
+   <ul id="taskList"> </ul>
+  <script>
+        const list = document.getElementById("taskList");
+
+        // load all tasks from GET / tasks;
+        async function loadTasks() {
+            const response = await fetch("/tasks");
+            const tasks = await response.json();
+            list.innerHTML = "";
+
+            tasks.forEach(task => {
+                const li = document.createElement("li");
+                if (tasks.done) li.classList.add("done");
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = task.done;
+                checkbox.change = () => toggleTask(task);
+
+                const title = document.createElement("span");
+                title.textContent = task.title;
+
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Delete";
+                deleteBtn.onclick = () => deleteTask(task.id);
+
+                li.append(checkbox, title, deleteBtn);
+                list.appendChild(li);
+
+            });
+        }
+
+        // Add a task with POST /tasks
+        document.getElementById("taskForm").onsubmit = async (event) => {
+                event.preventDefault();
+                const input = document.getElementById("titleInput");
+                await fetch("/tasks", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({title: input.value, done: false})
+                });
+                input.value = "";
+                await loadTasks();
+        };
+
+        // Mark don/undone with PUT /task/{id}
+        async function toggleTask(task) {
+            await fetch("/tasks/" + task.id, {
+                method: "PUT",
+                header: {"Content-Type": 'application/json'},
+                body: JSON.stringify({ title: task.title, done: !task.done })
+            })
+            await loadTasks();
+        }
+
+        // Remove a task with DELETE /tasks/{id}
+        async function deleteTask(id) {
+            await fetch("/tasks/" + id, { method: "DELETE" })
+            await loadTasks();
+
+        }
+
+        loadTasks();
+
+  </script>
+</body>
+</html>
