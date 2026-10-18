@@ -24,3 +24,17 @@ Java 17, Spring Boot, Spring Data JPA, H2, HTML/JavaScript
 | POST | /tasks | Create a task |
 | PUT | /tasks/{id} | Update a task |
 | DELETE | /tasks/{id} | Delete a task |
+
+## JDBC Setup
+
+Start the application, then open the [H2 Console](http://localhost:8080/h2-console/).
+
+Enter the following connection details:
+
+| Setting | Value |
+| --- | --- |
+| JDBC URL | `jdbc:h2:file:~/todo-app/planner` |
+| Username | `sa` |
+| Password | `telly224` |
+
+Click **Connect** to access the database.
