@@ -1,7 +1,11 @@
 package com.mohamed.todo;
 
+import com.mohamed.todo.dto.TaskRequest;
+import com.mohamed.todo.dto.TaskResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
+
 import java.util.List;
 
 @RestController
@@ -14,21 +18,28 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<Task> getAll() { return service.getAll(); }
+    public List<TaskResponse> getAll() {
+        return service.getAll().stream()
+                .map(TaskMapper::toResponse)
+                .toList();
+    }
 
     @GetMapping("/{id}")
-    public Task getOne(@PathVariable Long id) {
-        return service.getById(id);
+    public TaskResponse getOne(@PathVariable Long id) {
+
+        return TaskMapper.toResponse(service.getById(id));
     }
 
     @PostMapping
-    public Task create(@Valid @RequestBody Task task) {
-        return service.create(task);
+    public TaskResponse create(@Valid @RequestBody TaskRequest request) {
+        Task saved = service.create(TaskMapper.toEntity(request));
+        return TaskMapper.toResponse(saved);
     }
 
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @Valid @RequestBody Task task) {
-        return service.update(id, task);
+    public TaskResponse update(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
+       Task updated = service.update(id, TaskMapper.toEntity(request));
+       return TaskMapper.toResponse(updated);
     }
 
     @DeleteMapping("/{id}")
