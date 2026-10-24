@@ -12,7 +12,6 @@ public class Task {
     @GeneratedValue
     private Long id;
 
-    @NotBlank(message ="Title cannot be empty")
     private String title;
 
     private boolean done;

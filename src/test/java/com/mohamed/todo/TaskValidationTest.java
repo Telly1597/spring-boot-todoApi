@@ -1,6 +1,7 @@
 package com.mohamed.todo;
 
 
+import com.mohamed.todo.dto.TaskRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -16,10 +17,10 @@ public class TaskValidationTest {
 
     @Test
     void emptyTitle_isRejected() {
-        Task task = new Task();
-        task.setTitle(" ");
+        TaskRequest request = new TaskRequest(" ", false);
 
-        Set<ConstraintViolation<Task>> errors = validator.validate(task);
+
+        Set<ConstraintViolation<TaskRequest>> errors = validator.validate(request);
 
         assertThat(errors).isNotEmpty();
         assertThat(errors.iterator().next().getMessage())
@@ -28,9 +29,8 @@ public class TaskValidationTest {
 
     @Test
     void validTitle_isAccepted() {
-        Task task = new Task();
-        task.setTitle("Buy milk");
+        TaskRequest request = new TaskRequest("Buy milk", false);
 
-        assertThat(validator.validate(task)).isEmpty();
+        assertThat(validator.validate(request)).isEmpty();
     }
 }
