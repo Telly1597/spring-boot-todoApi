@@ -2,6 +2,7 @@ package com.mohamed.todo;
 
 import com.mohamed.todo.dto.TaskRequest;
 import com.mohamed.todo.dto.TaskResponse;
+import com.mohamed.todo.error.TaskNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,10 @@ public class TaskController {
 
     @GetMapping("/{id}")
     public TaskResponse getOne(@PathVariable Long id) {
+        // simulate that task 999 isn't found to trigger the advice
+        if (id == 999) {
+            throw new TaskNotFoundException(999L);
+        }
 
         return TaskMapper.toResponse(service.getById(id));
     }

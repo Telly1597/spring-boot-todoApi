@@ -1,7 +1,6 @@
 package com.mohamed.todo;
-import org.springframework.http.HttpStatus;
+import com.mohamed.todo.error.TaskNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -19,8 +18,7 @@ public class TaskService {
 
     public Task getById(Long id) {
         return repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,  "Task " + id + " not found"));
+                .orElseThrow(() -> new TaskNotFoundException(id));
     }
 
     public Task create(Task task) {
