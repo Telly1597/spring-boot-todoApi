@@ -1,12 +1,11 @@
 package com.mohamed.todo;
 
+import com.mohamed.todo.error.TaskNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,13 +50,12 @@ public class TaskServiceTest {
     }
 
     @Test
-    void getById_throws404_whenTaskMissing() {
+    void getById_throwsNotFound_whenTaskMissing() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(99L))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
-                        .isEqualTo(HttpStatus.NOT_FOUND));
+                .isInstanceOf(TaskNotFoundException.class)
+                .hasMessage("Task 99 not found");
     }
 
     @Test
@@ -86,7 +84,7 @@ public class TaskServiceTest {
         when(repo.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(99L))
-                .isInstanceOf(ResponseStatusException.class);
+                .isInstanceOf(TaskNotFoundException.class);
 
         verify(repo, never()).deleteById(any());
     }
