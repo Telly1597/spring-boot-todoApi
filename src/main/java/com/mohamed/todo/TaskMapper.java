@@ -12,11 +12,15 @@ public final class TaskMapper {
     public static Task toEntity(TaskRequest request) {
         Task task = new Task();
         task.setTitle(request.title());
+        task.setDescription(request.description());
+        task.setStartTime(request.startTime());
+        task.setEndTime(request.endTime());
         task.setDone(request.done());
+
         return task;
     }
 
     public static TaskResponse toResponse(Task task) {
-        return new TaskResponse(task.getId(), task.getTitle(), task.isDone());
+        return new TaskResponse(task.getId(), task.getTitle(),task.getDescription(), task.getStartTime(), task.getEndTime(), task.isDone());
     }
 }

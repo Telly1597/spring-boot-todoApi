@@ -68,4 +68,17 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.fieldErrors()).isEmpty();
     }
+
+    @Test
+    void invalidSchedule_returns400_withFieldError() {
+        ResponseEntity<ErrorResponse> response = handler.handleInvalidSchedule(
+                new InvalidScheduleException("endTime", "End time must be after start time"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse(
+                400,
+                "Bad Request",
+                "Validation failed",
+                Map.of("endTime", "End time must be after start time")));
+    }
 }
