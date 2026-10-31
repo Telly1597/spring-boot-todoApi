@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,6 +19,8 @@ class ApiErrorIntegrationTest {
     private int port;
 
     private final HttpClient client = HttpClient.newHttpClient();
+
+    private static final LocalDate TODAY = LocalDate.now();
 
     @Test
     void missingTask_returns404_inNewShape() throws Exception {
@@ -33,7 +36,11 @@ class ApiErrorIntegrationTest {
 
     @Test
     void emptyTitle_returns400_withFieldError() throws Exception {
-        HttpResponse<String> response = post("/tasks", "{\"title\":\"\"}");
+        String json = """
+                {"title":"","startTime":"%sT14:00","endTime":"%sT15:00"}
+                """.formatted(TODAY, TODAY);
+
+        HttpResponse<String> response = post("/tasks", json);
 
         assertThat(response.statusCode()).isEqualTo(400);
         assertThat(response.body())

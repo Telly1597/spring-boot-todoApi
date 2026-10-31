@@ -45,6 +45,14 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors));
     }
 
+    // 400: the time slot breaks a scheduling rule
+    @ExceptionHandler(InvalidScheduleException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSchedule(InvalidScheduleException ex) {
+        Map<String, String> fieldErrors = Map.of(ex.getField(), ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors));
+    }
+
     // 400: body is missing or isn't valid JSON
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
