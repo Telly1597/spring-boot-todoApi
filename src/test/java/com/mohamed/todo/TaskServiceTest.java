@@ -36,6 +36,9 @@ public class TaskServiceTest {
     private static final LocalDateTime START = LocalDateTime.of(2026, 11, 2, 14, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 11, 2, 15, 0);
 
+    private static final LocalDate WEEK_MONDAY = LocalDate.of(2026, 11, 2);
+    private static final LocalDate WEEK_SUNDAY = LocalDate.of(2026, 11, 8);
+
     @BeforeEach
     void setUp() {
         service = new TaskService(repo, planningRange);
@@ -68,7 +71,19 @@ public class TaskServiceTest {
         verify(repo, never()).save(any());
     }
 
-    // ---------- Existing behaviour ----------
+    /** Asserts that querying this date range is rejected on the given field, without touching the DB. */
+    private void assertRangeRejected(LocalDate from, LocalDate to,
+                                     String expectedField, String expectedMessagePart) {
+        assertThatThrownBy(() -> service.getBetween(from, to))
+                .isInstanceOfSatisfying(InvalidScheduleException.class, ex -> {
+                    assertThat(ex.getField()).isEqualTo(expectedField);
+                    assertThat(ex.getMessage()).contains(expectedMessagePart);
+                });
+
+        verify(repo, never()).findOverlapping(any(), any());
+    }
+
+    // ---------- Basic CRUD ----------
 
     @Test
     void getAll_returnsAllTasks() {
@@ -136,7 +151,7 @@ public class TaskServiceTest {
         verify(repo, never()).deleteById(any());
     }
 
-    // ---------- Schedule rules: rejected ----------
+    // ---------- Schedule rules (CAL-04): rejected ----------
 
     @Test
     void create_rejects_missingStartTime() {
@@ -206,7 +221,7 @@ public class TaskServiceTest {
         verify(repo, never()).save(any());
     }
 
-    // ---------- Schedule rules: allowed edge cases ----------
+    // ---------- Schedule rules (CAL-04): allowed edge cases ----------
 
     @Test
     void create_allows_shortestTask_ofFifteenMinutes() {
@@ -235,5 +250,63 @@ public class TaskServiceTest {
 
         assertThatCode(() -> service.create(first)).doesNotThrowAnyException();
         assertThatCode(() -> service.create(last)).doesNotThrowAnyException();
+    }
+
+    // ---------- Week query (CAL-05) ----------
+
+    @Test
+    void getBetween_queriesFromMidnightToMidnightAfterLastDay() {
+        Task task = newTask("In range", false);
+        LocalDateTime expectedStart = LocalDateTime.of(2026, 11, 2, 0, 0);   // Monday 00:00 (included)
+        LocalDateTime expectedEnd = LocalDateTime.of(2026, 11, 9, 0, 0);     // next Monday 00:00 (excluded)
+        when(repo.findOverlapping(expectedStart, expectedEnd)).thenReturn(List.of(task));
+
+        List<Task> result = service.getBetween(WEEK_MONDAY, WEEK_SUNDAY);
+
+        assertThat(result).containsExactly(task);
+        verify(repo).findOverlapping(expectedStart, expectedEnd);
+    }
+
+    @Test
+    void getBetween_allowsSingleDay() {
+        when(repo.findOverlapping(any(), any())).thenReturn(List.of());
+
+        assertThatCode(() -> service.getBetween(WEEK_MONDAY, WEEK_MONDAY)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void getBetween_allowsExactly42Days() {
+        when(repo.findOverlapping(any(), any())).thenReturn(List.of());
+        LocalDate to = WEEK_MONDAY.plusDays(41); // 42 days, counting both ends
+
+        assertThatCode(() -> service.getBetween(WEEK_MONDAY, to)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void getBetween_rejects_43Days() {
+        LocalDate to = WEEK_MONDAY.plusDays(42); // 43 days, counting both ends
+
+        assertRangeRejected(WEEK_MONDAY, to, "to", "at most 42 days");
+    }
+
+    @Test
+    void getBetween_rejects_fromAfterTo() {
+        assertRangeRejected(WEEK_SUNDAY, WEEK_MONDAY, "from", "on or before");
+    }
+
+    @Test
+    void getBetween_rejects_fromBeforePlanningRange() {
+        LocalDate from = LocalDate.of(2020, 12, 28);
+        LocalDate to = LocalDate.of(2021, 1, 3);
+
+        assertRangeRejected(from, to, "from", "between 2021-01-01 and 2031-12-31");
+    }
+
+    @Test
+    void getBetween_rejects_toAfterPlanningRange() {
+        LocalDate from = LocalDate.of(2031, 12, 29);
+        LocalDate to = LocalDate.of(2032, 1, 4);
+
+        assertRangeRejected(from, to, "to", "between 2021-01-01 and 2031-12-31");
     }
 }

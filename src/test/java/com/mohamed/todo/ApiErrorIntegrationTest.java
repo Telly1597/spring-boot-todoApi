@@ -64,6 +64,25 @@ class ApiErrorIntegrationTest {
         assertThat(response.body()).contains("'abc' isn't a valid value");
     }
 
+    @Test
+    void weekQuery_withFromAfterTo_returns400_withFieldError() throws Exception {
+        HttpResponse<String> response = get("/tasks?from=" + TODAY.plusDays(6) + "&to=" + TODAY);
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body())
+                .contains("\"message\":\"Validation failed\"")
+                .contains("\"from\":\"Start date must be on or before end date\"");
+    }
+
+    @Test
+    void weekQuery_withOnlyFrom_fallsBackToAllTasks() throws Exception {
+        // Documents the two-method design: without both params, GET /tasks returns everything
+        HttpResponse<String> response = get("/tasks?from=" + TODAY);
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).startsWith("[");
+    }
+
     private HttpResponse<String> get(String path) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(uri(path)).GET().build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
