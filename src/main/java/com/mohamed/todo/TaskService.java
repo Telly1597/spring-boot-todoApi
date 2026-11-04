@@ -6,13 +6,16 @@ import com.mohamed.todo.schedule.PlanningRange;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.temporal.ChronoUnit;
 
 @Service
 public class TaskService {
 
     private static final int SLOT_MINUTES = 15;
+    private static final int MAX_RANGE_DAYS = 42;
 
     private final TaskRepository repo;
     private final PlanningRange planningRange;
@@ -53,6 +56,26 @@ public class TaskService {
         repo.deleteById(id);
     }
 
+    private void validateRange(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new InvalidScheduleException("from", "Start date must be on or before end date");
+        }
+        if (ChronoUnit.DAYS.between(from, to) + 1 > MAX_RANGE_DAYS) {
+            throw new InvalidScheduleException("to", "Range can be at most " + MAX_RANGE_DAYS + " days");
+        }
+        if (!planningRange.contains(from.atStartOfDay())) {
+            throw new InvalidScheduleException("from", outsidePlanningRangeMessage());
+        }
+        if (!planningRange.contains(to.atStartOfDay())) {
+            throw new InvalidScheduleException("to", outsidePlanningRangeMessage());
+        }
+    }
+
+    private String outsidePlanningRangeMessage() {
+        return "Date must be between " + planningRange.firstAllowedDate()
+                + " and " + planningRange.lastAllowedDate();
+    }
+
     private void validateSchedule(LocalDateTime start, LocalDateTime end) {
         if (start == null) {
             throw new InvalidScheduleException("startTime", "Start time is required");
@@ -76,15 +99,19 @@ public class TaskService {
             throw new InvalidScheduleException("endTime", "Task must be at least 15 minutes long");
         }
         if (!planningRange.contains(start)) {
-            throw new InvalidScheduleException("startTime",
-                    "Date must be between " + planningRange.firstAllowedDate()
-                            + " and " + planningRange.lastAllowedDate());
+            throw new InvalidScheduleException("startTime", outsidePlanningRangeMessage());
         }
+
     }
 
     private boolean isOnSlotBoundary(LocalDateTime time) {
         return time.getMinute() % SLOT_MINUTES == 0
                 && time.getSecond() == 0
                 && time.getNano() == 0;
+    }
+
+    public List<Task> getBetween(LocalDate from, LocalDate to) {
+        validateRange(from, to);
+        return repo.findOverlapping(from.atStartOfDay(), to.plusDays(1).atStartOfDay());
     }
 }
