@@ -1,6 +1,7 @@
 package com.mohamed.todo;
 
 import com.mohamed.todo.error.InvalidScheduleException;
+import com.mohamed.todo.error.TaskConflictException;
 import com.mohamed.todo.error.TaskNotFoundException;
 import com.mohamed.todo.schedule.PlanningRange;
 import org.springframework.stereotype.Service;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.time.temporal.ChronoUnit;
 
@@ -36,6 +38,7 @@ public class TaskService {
 
     public Task create(Task task) {
         validateSchedule(task.getStartTime(), task.getEndTime());
+        validateNoScheduleConflicts(task);
         return repo.save(task);
     }
 
@@ -48,6 +51,8 @@ public class TaskService {
         task.setStartTime(updated.getStartTime());
         task.setEndTime(updated.getEndTime());
         task.setDone(updated.isDone());
+
+        validateNoScheduleConflicts(task);
         return repo.save(task);
     }
 
@@ -110,6 +115,25 @@ public class TaskService {
                 && time.getNano() == 0;
     }
 
+    private void validateNoScheduleConflicts(Task task) {
+        // Formatter for clean 24-hour style time strings (e.g., 14:00)
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        repo.findConflicts(task.getId(), task.getStartTime(), task.getEndTime())
+                .stream()
+                .findFirst()
+                .ifPresent(clashingTask -> {
+                    String formattedStart = clashingTask.getStartTime().format(timeFormatter);
+                    String formattedEnd = clashingTask.getEndTime().format(timeFormatter);
+
+                    throw new TaskConflictException(String.format(
+                            "Overlaps with '%s' (%s–%s).",
+                            clashingTask.getTitle(),
+                            formattedStart,
+                            formattedEnd
+                    ));
+                });
+    }
     public List<Task> getBetween(LocalDate from, LocalDate to) {
         validateRange(from, to);
         return repo.findOverlapping(from.atStartOfDay(), to.plusDays(1).atStartOfDay());

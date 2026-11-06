@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     }
 
     // 409: the request breaks a rule (overlap, open subtasks, prerequisites)
-    @ExceptionHandler({ScheduleConflictException.class, BusinessRuleException.class})
+    @ExceptionHandler({TaskConflictException.class, BusinessRuleException.class})
     public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
