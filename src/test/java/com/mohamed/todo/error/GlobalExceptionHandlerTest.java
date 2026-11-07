@@ -26,7 +26,7 @@ class GlobalExceptionHandlerTest {
     @Test
     void scheduleConflict_returns409() {
         ResponseEntity<ErrorResponse> response =
-                handler.handleConflict(new ScheduleConflictException("Overlaps with 'Gym' (14:00–15:00)"));
+                handler.handleConflict(new TaskConflictException("Overlaps with 'Gym' (14:00–15:00)"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody())

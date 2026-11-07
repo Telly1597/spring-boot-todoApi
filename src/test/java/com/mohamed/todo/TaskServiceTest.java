@@ -1,6 +1,7 @@
 package com.mohamed.todo;
 
 import com.mohamed.todo.error.InvalidScheduleException;
+import com.mohamed.todo.error.TaskConflictException;
 import com.mohamed.todo.error.TaskNotFoundException;
 import com.mohamed.todo.schedule.PlanningRange;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +56,12 @@ public class TaskServiceTest {
         task.setDone(done);
         task.setStartTime(start);
         task.setEndTime(end);
+        return task;
+    }
+
+    private Task storedTask(Long id, String title) {
+        Task task = newTask(title, false);
+        ReflectionTestUtils.setField(task, "id", id);
         return task;
     }
 
@@ -308,5 +316,51 @@ public class TaskServiceTest {
         LocalDate to = LocalDate.of(2032, 1, 4);
 
         assertRangeRejected(from, to, "to", "between 2021-01-01 and 2031-12-31");
+    }
+
+    // ---------- Conflicts ----------
+
+    @Test
+    void create_rejects_whenRepoReportsConflict_andDoesNotSave() {
+        Task task = newTask("Clash", false);
+        when(repo.findConflicts(isNull(), eq(START), eq(END))).thenReturn(List.of(newTask("Other", false)));
+
+        assertThatThrownBy(() -> service.create(task))
+                .isInstanceOf(TaskConflictException.class);
+
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void create_checksConflicts_withNullExcludeId() {
+        Task task = newTask("New", false);
+        when(repo.findConflicts(isNull(), eq(START), eq(END))).thenReturn(List.of());
+        when(repo.save(task)).thenReturn(task);
+
+        service.create(task);
+
+        verify(repo).findConflicts(isNull(), eq(START), eq(END));
+    }
+
+    @Test
+    void update_checksConflicts_excludingTheTaskItself() {
+        when(repo.findById(1L)).thenReturn(Optional.of(storedTask(1L, "Old")));
+        when(repo.findConflicts(eq(1L), any(), any())).thenReturn(List.of());
+        when(repo.save(any(Task.class))).thenAnswer(call -> call.getArgument(0));
+
+        service.update(1L, newTask("Old", false, START.plusHours(2), END.plusHours(2)));
+
+        verify(repo).findConflicts(1L, START.plusHours(2), END.plusHours(2));
+    }
+
+    @Test
+    void update_rejects_whenRepoReportsConflict_andDoesNotSave() {
+        when(repo.findById(1L)).thenReturn(Optional.of(storedTask(1L, "Old")));
+        when(repo.findConflicts(eq(1L), any(), any())).thenReturn(List.of(newTask("Other", false)));
+
+        assertThatThrownBy(() -> service.update(1L, newTask("Old", false, START, END)))
+                .isInstanceOf(TaskConflictException.class);
+
+        verify(repo, never()).save(any());
     }
 }
